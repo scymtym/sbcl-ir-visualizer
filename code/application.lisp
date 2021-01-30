@@ -135,8 +135,7 @@
             :fill))
         (:fill (clim-tab-layout:with-tab-layout ('clim-tab-layout:tab-page)
                  ("Intermediate Representation"
-                  (clim:scrolling ()
-                    ir))
+                  (clim:scrolling (:scroll-bars :both) ir))
                  ("Disassembly"
                   (clim:labelling (:label "TODO")))))))))
   (:menu-bar nil)
