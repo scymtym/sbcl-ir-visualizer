@@ -1,6 +1,6 @@
 ;;;; application.lisp --- Application frame.
 ;;;;
-;;;; Copyright (C) 2020 Jan Moringen
+;;;; Copyright (C) 2020, 2021 Jan Moringen
 ;;;;
 ;;;; Author: Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 
@@ -88,6 +88,17 @@
                                      (setf (second cell) (floor value))
                                      (setf (policy frame) policy)))))))
 
+(defun make-optimization-button (frame label policy &key background)
+  (apply #'clim:make-pane :push-button
+         :client frame
+         :label  label
+         :activate-callback
+         (lambda (gadget)
+           (let ((frame (clim:gadget-client gadget)))
+             (setf (policy frame) policy)))
+         (when background
+           (list :background  background))))
+
 ;;; Frame
 
 (defvar *example-lambda-expression*
@@ -118,7 +129,18 @@
    (debug             (make-optimization-quality-pane clim:*application-frame* 'debug             "Debug"))
    (space             (make-optimization-quality-pane clim:*application-frame* 'space             "Space"))
    (compilation-speed (make-optimization-quality-pane clim:*application-frame* 'compilation-speed "Compilation Speed"))
-   (ir                clouseau:inspector-pane))
+   (safe              (make-optimization-button
+                       clim:*application-frame* "Safe"
+                       '((speed 0) (safety 3) (debug 3) (space 0) (compilation-speed 0))
+                       :background clim:+light-green+))
+   (default           (make-optimization-button
+                       clim:*application-frame* "Default"
+                       '((speed 1) (safety 1) (debug 1) (space 1) (compilation-speed 1))))
+   (fast              (make-optimization-button
+                       clim:*application-frame* "Fast"
+                       '((speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0))
+                       :background clim:+salmon+))
+   (ir                 clouseau:inspector-pane)
   (:layouts
    (default
     (clim:spacing (:thickness 4)
@@ -132,6 +154,8 @@
             debug
             space
             compilation-speed
+            (clim:horizontally (:spacing 8)
+              safe default fast)
             :fill))
         (:fill (clim-tab-layout:with-tab-layout ('clim-tab-layout:tab-page)
                  ("Intermediate Representation"
@@ -151,6 +175,12 @@
         (princ condition *trace-output*)))))
 
 (defmethod (setf policy) :after ((new-value t) (frame ir-inspector))
+  (labels ((update-slider (quality)
+             (let ((slider (first (clim:sheet-children
+                                   (clim:find-pane-named frame quality)))))
+               (setf (clim:gadget-value slider :value-changed-callback nil)
+                     (second (find quality new-value :key #'first))))))
+    (map nil #'update-slider '(speed safety debug space compilation-speed)))
   (a:when-let ((ir (clim:find-pane-named frame 'ir)))
     (handler-case
         (setf (clouseau:root-object ir :run-hook-p t)
