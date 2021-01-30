@@ -25,10 +25,19 @@
        ,@body)))
 
 (defun form->component (form)
-  (let* ((cell      (list nil))
-         (*inspect* cell))
-    (compile nil form)
-    (car cell)))
+  (let* ((cell     (list nil))
+         (output   (make-string-output-stream))
+         (function (let ((*inspect*         cell)
+                         (*standard-output* output)
+                         (*error-output*    output)
+                         (*trace-output*    output))
+                     (compile nil form))))
+    (values (car cell)
+            (let ((string (get-output-stream-string output)))
+              (if (a:emptyp string) nil string))
+            (with-output-to-string (stream)
+              (sb-disassem:disassemble-code-component
+               function :stream stream)))))
 
 (defun string->component (string policy)
   (form->component (instrument-form (string->form string) policy)))
@@ -111,13 +120,17 @@
                ~0@T        (list x))))"))
 
 (clim:define-application-frame ir-inspector ()
-  ((%form   :accessor form)
-   (%policy :accessor policy
-            :initform (list (list 'speed             1)
-                            (list 'safety            1)
-                            (list 'debug             1)
-                            (list 'space             1)
-                            (list 'compilation-speed 1))))
+  ((%form        :accessor form)
+   (%policy      :accessor policy
+                 :initform (list (list 'speed             1)
+                                 (list 'safety            1)
+                                 (list 'debug             1)
+                                 (list 'space             1)
+                                 (list 'compilation-speed 1)))
+   (%output      :accessor output
+                 :initform nil)
+   (%disassembly :accessor disassembly
+                 :initform nil))
   (:panes
    (form-editor       form-editor
                       :value *example-lambda-expression*
@@ -141,6 +154,12 @@
                        '((speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0))
                        :background clim:+salmon+))
    (ir                 clouseau:inspector-pane)
+   (output            :application :borders            nil
+                                   :display-function   'display-output
+                                   :end-of-page-action :allow)
+   (disassembly       :application :borders            nil
+                                   :display-function   'display-disassembly
+                                   :end-of-page-action :allow))
   (:layouts
    (default
     (clim:spacing (:thickness 4)
@@ -158,21 +177,28 @@
               safe default fast)
             :fill))
         (:fill (clim-tab-layout:with-tab-layout ('clim-tab-layout:tab-page)
+                 ("Output"
+                  output)
                  ("Intermediate Representation"
                   (clim:scrolling (:scroll-bars :both) ir))
                  ("Disassembly"
-                  (clim:labelling (:label "TODO")))))))))
+                  disassembly)))))))
   (:menu-bar nil)
   (:command-table (ir-inspector-commadn-table
                    :inherit-from (clouseau:inspector-command-table))))
 
-(defmethod (setf form) :after ((new-value t) (frame ir-inspector))
+(defun update (frame form policy)
   (a:when-let ((ir (clim:find-pane-named frame 'ir)))
     (handler-case
-        (setf (clouseau:root-object ir :run-hook-p t)
-              (form->component (instrument-form new-value (policy frame))))
+        (setf (values (clouseau:root-object ir :run-hook-p t)
+                      (output frame)
+                      (disassembly frame))
+              (form->component (instrument-form form policy)))
       (error (condition)
         (princ condition *trace-output*)))))
+
+(defmethod (setf form) :after ((new-value t) (frame ir-inspector))
+  (update frame new-value (policy frame)))
 
 (defmethod (setf policy) :after ((new-value t) (frame ir-inspector))
   (labels ((update-slider (quality)
@@ -181,12 +207,29 @@
                (setf (clim:gadget-value slider :value-changed-callback nil)
                      (second (find quality new-value :key #'first))))))
     (map nil #'update-slider '(speed safety debug space compilation-speed)))
-  (a:when-let ((ir (clim:find-pane-named frame 'ir)))
-    (handler-case
-        (setf (clouseau:root-object ir :run-hook-p t)
-              (form->component (instrument-form (form frame) new-value)))
-      (error (condition)
-        (princ condition *trace-output*)))))
+  (update frame (form frame) new-value))
+
+(defmethod (setf output) :after ((new-value t) (frame ir-inspector))
+  (a:when-let ((output (clim:find-pane-named frame 'output)))
+    (clim:redisplay-frame-pane frame output :force-p t)))
+
+(defun display-output (frame pane)
+  (a:if-let ((output (output frame)))
+    (clim:with-drawing-options (pane :text-family :fix :text-size :smaller)
+      (write-string output pane))
+    (clim:with-drawing-options (pane :text-face :italic :ink clim:+gray40+)
+      (write-string "no output produced" pane))))
+
+(defmethod (setf disassembly) :after ((new-value t) (frame ir-inspector))
+  (a:when-let ((disassembly (clim:find-pane-named frame 'disassembly)))
+    (clim:redisplay-frame-pane frame disassembly :force-p t)))
+
+(defun display-disassembly (frame pane)
+  (a:if-let ((disassembly (disassembly frame)))
+    (clim:with-drawing-options (pane :text-family :fix :text-size :smaller)
+      (write-string disassembly pane))
+    (clim:with-drawing-options (pane :text-face :italic :ink clim:+gray40+)
+      (write-string "no disassembly produced" pane))))
 
 ;;; Interface
 
