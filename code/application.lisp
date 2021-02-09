@@ -184,7 +184,7 @@
                  ("Disassembly"
                   disassembly)))))))
   (:menu-bar nil)
-  (:command-table (ir-inspector-commadn-table
+  (:command-table (ir-inspector-command-table
                    :inherit-from (clouseau:inspector-command-table))))
 
 (defun update (frame form policy)
