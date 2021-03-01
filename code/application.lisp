@@ -108,6 +108,12 @@
          (when background
            (list :background  background))))
 
+;;; Output
+
+(defclass output-pane (clim:application-pane
+                       clouseau::scroll-position-preserving-mixin)
+  ())
+
 ;;; Frame
 
 (defvar *example-lambda-expression*
@@ -154,12 +160,10 @@
                        '((speed 3) (safety 0) (debug 0) (space 0) (compilation-speed 0))
                        :background clim:+salmon+))
    (ir                 clouseau:inspector-pane)
-   (output            :application :borders            nil
-                                   :display-function   'display-output
-                                   :end-of-page-action :allow)
-   (disassembly       :application :borders            nil
-                                   :display-function   'display-disassembly
-                                   :end-of-page-action :allow))
+   (output            output-pane :display-function   'display-output
+                                  :end-of-page-action :allow)
+   (disassembly       output-pane :display-function   'display-disassembly
+                                  :end-of-page-action :allow))
   (:layouts
    (default
     (clim:spacing (:thickness 4)
@@ -178,11 +182,11 @@
             :fill))
         (:fill (clim-tab-layout:with-tab-layout ('clim-tab-layout:tab-page)
                  ("Output"
-                  output)
+                  (clim:scrolling () output))
                  ("Intermediate Representation"
                   (clim:scrolling (:scroll-bars :both) ir))
                  ("Disassembly"
-                  disassembly)))))))
+                  (clim:scrolling () disassembly))))))))
   (:menu-bar nil)
   (:command-table (ir-inspector-command-table
                    :inherit-from (clouseau:inspector-command-table))))
