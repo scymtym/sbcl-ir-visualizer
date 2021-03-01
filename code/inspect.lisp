@@ -1,6 +1,6 @@
 ;;;; inspect.lisp --- Clouseau extensions for SBCL IR objects.
 ;;;;
-;;;; Copyright (C) 2020 Jan Moringen
+;;;; Copyright (C) 2020, 2021 Jan Moringen
 ;;;;
 ;;;; Author: Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 
@@ -53,6 +53,38 @@
     (make-instance class :place      place
                          :slot-style nil)))
 
+(defun draw-control-arc (stream from to x1 y1 x2 y2
+                         &rest args &key &allow-other-keys)
+  (cond ((< x2 x1)
+         (multiple-value-bind (x2 y2)
+             (clim:with-bounding-rectangle* (x1 y1 x2 y2) from
+               (declare (ignore y2))
+               (values (/ (+ x1 x2) 2) y1))
+           (multiple-value-bind (x1 y1)
+               (clim:with-bounding-rectangle* (x1 y1 x2 y2) to
+                 (declare (ignore y2))
+                 (values (/ (+ x1 x2) 2) y1))
+             (let* ((margin 100)
+                    (y0     (- (min y1 y2) margin)))
+               (apply #'clim:draw-line* stream x2 y2 x2 y0 args)
+               (apply #'clim:draw-line* stream x1 y0 x2 y0 args)
+               (apply #'clim:draw-arrow* stream  x1 y0 x1 y1 args)))))
+        (t
+         (apply #'clim:draw-arrow* stream x1 y1 x2 y2 args))))
+
+(defun draw-ir1-control-arc (stream from to x1 y1 x2 y2)
+  (let* ((from* (clim:graph-node-object from))
+         (to*   (clim:graph-node-object to))
+         (last  (sb-c::block-last from*))
+         (ink   (cond ((not (typep last 'sb-c::cif))
+                       nil)
+                      ((eq (sb-c::if-consequent last) to*)
+                       clim:+green+)
+                      ((eq (sb-c::if-alternative last) to*)
+                       clim:+red+))))
+    (apply #'draw-control-arc stream from to x1 y1 x2 y2
+           (when ink (list :ink ink)))))
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::component)
                                                 (state  clouseau:inspected-instance)
                                                 (style  (eql :expanded-body))
@@ -73,7 +105,8 @@
          (sb-c::block-succ node))
        :merge-duplicates t :duplicate-test #'eq
        :maximize-generations t
-       :stream stream))
+       :stream stream
+       :arc-drawer 'draw-ir1-control-arc))
     ;; IR2
     (clouseau:with-section (stream) "IR2 Control Flow Graph"
       (clim:format-graph-from-roots
@@ -88,7 +121,8 @@
               (sb-c::block-succ (sb-c::ir2-block-block node))))
        :merge-duplicates t :duplicate-test #'eq
        :maximize-generations t
-       :stream stream))
+       :stream stream
+       :arc-drawer 'draw-control-arc))
     ;; Instance slots
     (call-next-method)))
 
