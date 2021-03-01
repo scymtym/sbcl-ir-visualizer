@@ -88,9 +88,9 @@
               (sb-c::block-succ (sb-c::ir2-block-block node))))
        :merge-duplicates t :duplicate-test #'eq
        :maximize-generations t
-       :stream stream)))
-  ;; Instance slots
-  (call-next-method))
+       :stream stream))
+    ;; Instance slots
+    (call-next-method)))
 
 ;;; `cblock'
 
