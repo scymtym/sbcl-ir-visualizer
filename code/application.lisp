@@ -154,7 +154,10 @@
   (:menu-bar nil)
   (:pointer-documentation t)
   (:command-table (ir-inspector-command-table
-                   :inherit-from (clouseau:inspector-command-table))))
+                   :inherit-from (clouseau:inspector-command-table)))
+  (:pretty-name (format nil "IR Visualizer  ~A@~A"
+                        (lisp-implementation-type)
+                        (lisp-implementation-version))))
 
 (defun update (frame form policy)
   (a:when-let ((ir (clim:find-pane-named frame 'ir)))
