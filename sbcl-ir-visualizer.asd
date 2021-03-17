@@ -1,6 +1,6 @@
 ;;;; sbcl-ir-visualizer.asd --- System definition for the sbcl-ir-visualizer system.
 ;;;;
-;;;; Copyright (C) 2020 Jan Moringen
+;;;; Copyright (C) 2020, 2021 Jan Moringen
 ;;;;
 ;;;; Author: Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 
@@ -19,6 +19,7 @@
   :components  ((:module     "code"
                  :serial     t
                  :components ((:file       "package")
+                              (:file       "compile")
                               (:file       "inspect")
                               (:file       "application"))))
 
