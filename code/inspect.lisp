@@ -330,6 +330,14 @@
     (clim:with-drawing-options (stream :ink (lvar-ink number))
       (format stream "~D" number))))
 
+;;; `lambda-var'
+
+(defmethod clouseau:inspect-object-using-state ((object sb-c::lambda-var)
+                                                (state  clouseau:inspected-instance)
+                                                (style  (eql :collapsed))
+                                                (stream clim:extended-output-stream))
+  (prin1 (sb-c::lambda-var-%source-name object) stream))
+
 ;;; `ir2block'
 
 (defmethod clouseau:make-object-state ((object sb-c::ir2-block) (place t))
