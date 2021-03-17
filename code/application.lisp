@@ -152,6 +152,7 @@
                  ("Disassembly"
                   (clim:scrolling () disassembly))))))))
   (:menu-bar nil)
+  (:pointer-documentation t)
   (:command-table (ir-inspector-command-table
                    :inherit-from (clouseau:inspector-command-table))))
 
