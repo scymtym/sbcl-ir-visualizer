@@ -6,6 +6,13 @@
 
 (cl:in-package #:sbcl-ir-visualizer)
 
+;;; Utilities
+
+(defun inspect-part (container part stream)
+  (clouseau:formatting-place
+      (container 'clouseau:pseudo-place part nil present-object)
+    (present-object stream)))
+
 ;;; lvar utilities
 
 (defvar *lvar-numbers*)
@@ -20,10 +27,8 @@
                   (t       (lvar-number lvar)))))
     (clim:make-contrasting-inks 8 (mod number 8))))
 
-(defun inspect-lvar (container lvar stream)
-  (clouseau:formatting-place
-      (container 'clouseau:pseudo-place lvar nil present-object)
-    (present-object stream)))
+(defun inspect-lvar (container lvar stream) ; TODO remove
+  (inspect-part container lvar stream))
 
 ;;; Type utilities
 
@@ -228,21 +233,24 @@
   (call-next-method)
   ;; Try to present the referenced leaf nicely.
   (let ((leaf (sb-c::ref-leaf object)))
-   (format stream " ~A"
-           (cond ((sb-c::constant-p leaf)
-                  (let ((value (sb-c::constant-value leaf)))
-                    (cond ((and (listp value) (sb-c::lambda-p (first value)))
-                           (sb-c::lambda-%debug-name (first value)))
-                          ((and (listp value) (sb-c::optional-dispatch-p (first value)))
-                           "optional dispatch")
-                          (t
-                           value))))
-                 ((sb-c::global-var-p leaf)
-                  (sb-c::global-var-%source-name leaf))
-                 ((sb-c::lambda-p leaf)
-                  (sb-c::lambda-%debug-name leaf))
-                 (t
-                  (sb-c::ref-%source-name object))))))
+    (write-char #\Space stream)
+    (cond ((sb-c::constant-p leaf)
+           (let ((value (sb-c::constant-value leaf)))
+             (cond ((and (listp value) (sb-c::lambda-p (first value)))
+                    (princ (sb-c::lambda-%debug-name (first value)) stream))
+                   ((and (listp value) (sb-c::optional-dispatch-p (first value)))
+                    (write-string "optional dispatch" stream))
+                   (t
+                    (princ value stream)))))
+          ((sb-c::global-var-p leaf)
+           (princ (sb-c::global-var-%source-name leaf) stream))
+          ((sb-c::lambda-p leaf)
+           (princ (sb-c::lambda-%debug-name leaf) stream))
+          ((sb-c::lambda-var-p leaf)
+           (inspect-part object leaf stream))
+          (t
+           (princ (sb-c::ref-%source-name object) stream)))))
+
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cast)
                                                 (state  clouseau:inspected-instance)
