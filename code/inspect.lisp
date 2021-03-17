@@ -251,6 +251,15 @@
           (t
            (princ (sb-c::ref-%source-name object) stream)))))
 
+(defmethod clouseau:inspect-object-using-state ((object sb-c::cset)
+                                                (state  clouseau:inspected-instance)
+                                                (style  (eql :collapsed))
+                                                (stream clim:extended-output-stream))
+  (call-next-method)
+  (write-char #\Space stream)
+  (inspect-part object (sb-c::set-var object) stream)
+  (write-string " ← " stream)
+  (inspect-lvar object (sb-c::set-value object) stream))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cast)
                                                 (state  clouseau:inspected-instance)
