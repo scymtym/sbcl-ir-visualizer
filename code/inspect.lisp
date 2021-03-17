@@ -274,28 +274,12 @@
     (print-ctype (sb-c::cast-asserted-type object) stream)
     (write-char #\! stream)))
 
-(defmethod clouseau:inspect-object-using-state ((object sb-c::combination)
+(defmethod clouseau:inspect-object-using-state ((object sb-c::basic-combination)
                                                 (state  clouseau:inspected-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
-  ;; Combination kind and possibly "tail" annotation.n
-  (clim:with-drawing-options (stream :text-size :tiny :ink clim:+dark-red+)
-    (when (sb-c::combination-tail-p object)
-      (let* ((text   "tail")
-             ; (height (nth-value 1 (clim:text-size stream text)))
-             )
-        (clouseau:with-preserved-cursor-y (stream)
-          (clouseau:with-preserved-cursor-x (stream)
-            ;; TODO dy should be something like (- (+ height 2)) but
-            ;; moving the cursor closes the current text output record
-            ;; which in turn messes with the baseline so that doesn't
-            ;; work.
-            (clim:stream-increment-cursor-position stream 0 -2)
-            (write-string text stream)))))
-    (format stream "~(~A~)" (sb-c::combination-kind object))
-    (write-char #\Space stream))
   ;; Function lvar. Print the function name if possible.
-  (let* ((fun  (sb-c::combination-fun object))
+  (let* ((fun  (sb-c::basic-combination-fun object))
          (name (sb-c::lvar-fun-name* fun)))
     (write-char #\Space stream)
     (inspect-lvar object fun stream)
@@ -306,7 +290,42 @@
   (map nil (lambda (lvar)
              (write-char #\Space stream)
              (inspect-lvar object lvar stream))
-       (sb-c::combination-args object)))
+       (sb-c::basic-combination-args object)))
+
+(defmethod clouseau:inspect-object-using-state ((object sb-c::combination)
+                                                (state  clouseau:inspected-instance)
+                                                (style  (eql :collapsed))
+                                                (stream clim:extended-output-stream))
+  ;; Combination kind and possibly "tail" annotation.
+  (clim:with-drawing-options (stream :text-size :tiny :ink clim:+dark-red+)
+    (when (sb-c::combination-tail-p object)
+      (let* ((text   "tail")
+             #+later (height (nth-value 1 (clim:text-size stream text))))
+        (clouseau:with-preserved-cursor-y (stream)
+          (clouseau:with-preserved-cursor-x (stream)
+            ;; TODO dy should be something like (- (+ height 2)) but
+            ;; moving the cursor closes the current text output record
+            ;; which in turn messes with the baseline so that doesn't
+            ;; work.
+            (clim:stream-increment-cursor-position stream 0 -2)
+            (write-string text stream)))))
+    (format stream "~(~A~)" (sb-c::combination-kind object))
+    (write-char #\Space stream))
+  (call-next-method))
+
+(defmethod clouseau:inspect-object-using-state ((object sb-c::mv-combination)
+                                                (state  clouseau:inspected-instance)
+                                                (style  (eql :collapsed))
+                                                (stream clim:extended-output-stream))
+  (clim:with-drawing-options (stream :text-size :tiny :ink clim:+dark-red+)
+    (let ((text "mv"))
+      (clouseau:with-preserved-cursor-y (stream)
+        (clouseau:with-preserved-cursor-x (stream)
+          (clim:stream-increment-cursor-position stream 0 -2)
+          (write-string text stream))))
+    (format stream "~(~A~)" (sb-c::mv-combination-kind object))
+    (write-char #\Space stream))
+  (call-next-method))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cif)
                                                 (state  clouseau:inspected-instance)
