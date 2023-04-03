@@ -67,7 +67,7 @@
          :activate-callback
          (lambda (gadget)
            (let ((frame (clim:gadget-client gadget)))
-             (setf (policy frame) policy)))
+             (setf (policy frame) (copy-list policy))))
          (when background
            (list :background  background))))
 
