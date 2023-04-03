@@ -1,6 +1,6 @@
 ;;;; inspect.lisp --- Clouseau extensions for SBCL IR objects.
 ;;;;
-;;;; Copyright (C) 2020, 2021 Jan Moringen
+;;;; Copyright (C) 2020-2023 Jan Moringen
 ;;;;
 ;;;; Author: Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 
@@ -212,6 +212,9 @@
   (call-next-method))
 
 ;;; `node'
+
+(defmethod source-form ((object sb-c::node))
+  (sb-c::node-source-form object))
 
 (defmethod clouseau:object-state-class ((object sb-c::node) (place t))
   'inspected-ir-instance)
@@ -440,6 +443,9 @@
 
 ;;; `vop'
 
+(defmethod source-form ((object sb-c::vop))
+  (source-form (sb-c::vop-node object)))
+
 (defmethod clouseau:object-state-class ((object sb-c::vop) (place t))
   'inspected-ir-instance)
 
@@ -478,3 +484,39 @@
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (format stream "~D" (sb-c::tn-number object)))
+
+;; Display source form on hover
+
+(flet ((draw-source-form (stream object source-form)
+         (clim:with-output-to-output-record (stream)
+           (clim:surrounding-output-with-border
+            (stream :shape      :rectangle
+                    :outline    clim:+black+
+                    :background clim:+white+
+                    :shadow     clim:+gray50+)
+            (print source-form stream)
+            (terpri stream)
+            (ignore-errors (print-type-annotation (inferred-type object) stream))))))
+
+  (clim:define-presentation-method clim:highlight-presentation
+      ((type   inspected-ir-instance)
+       (record t)
+       (stream clim:extended-output-stream)
+       (state  t))
+    (let* ((state1      (clim:presentation-object record))
+           (object      (clouseau:object state1))
+           (frame       (clim:pane-frame stream))
+           (source-form (let ((sb-c::*source-info*  (source-info frame))
+                              (sb-c::*source-paths* (source-paths frame)))
+                          (ignore-errors (source-form object)))))
+      (when source-form
+        (clim:with-bounding-rectangle* (x1 y1) record
+          (let ((highlight-record (draw-source-form stream object source-form)))
+            (setf (clim:output-record-position highlight-record)
+                  (values x1 (+ y1 60)))
+            (ecase state
+              (:highlight
+               (clim:replay-output-record highlight-record stream))
+              (:unhighlight
+               (clim:repaint-sheet stream (clim:bounding-rectangle highlight-record))))))))
+    (call-next-method)))

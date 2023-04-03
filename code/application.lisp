@@ -1,6 +1,6 @@
 ;;;; application.lisp --- Application frame.
 ;;;;
-;;;; Copyright (C) 2020, 2021 Jan Moringen
+;;;; Copyright (C) 2020-2023 Jan Moringen
 ;;;;
 ;;;; Author: Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 
@@ -89,17 +89,22 @@
                ~0@T        (list x))))"))
 
 (clim:define-application-frame ir-inspector ()
-  ((%form        :accessor form)
-   (%policy      :accessor policy
-                 :initform (list (list 'speed             1)
-                                 (list 'safety            1)
-                                 (list 'debug             1)
-                                 (list 'space             1)
-                                 (list 'compilation-speed 1)))
-   (%output      :accessor output
-                 :initform nil)
-   (%disassembly :accessor disassembly
-                 :initform nil))
+  (;; Input
+   (%form         :accessor form)
+   (%source-info  :accessor source-info)
+   (%source-paths :accessor source-paths)
+   ;; Parameters
+   (%policy       :accessor policy
+                  :initform (list (list 'speed             1)
+                                  (list 'safety            1)
+                                  (list 'debug             1)
+                                  (list 'space             1)
+                                  (list 'compilation-speed 1)))
+   ;; Output
+   (%output       :accessor output
+                  :initform nil)
+   (%disassembly  :accessor disassembly
+                  :initform nil))
   (:panes
    (form-editor       form-editor
                       :value *example-lambda-expression*
@@ -162,8 +167,10 @@
   (a:when-let ((ir (clim:find-pane-named frame 'ir)))
     (handler-case
         (setf (values (clouseau:root-object ir :run-hook-p t)
-                      (output frame)
-                      (disassembly frame))
+                      (output       frame)
+                      (disassembly  frame)
+                      (source-info  frame)
+                      (source-paths frame))
               (form->component (instrument-form form policy)))
       (error (condition)
         (princ condition *trace-output*)))))
