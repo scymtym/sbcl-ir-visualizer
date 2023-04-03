@@ -521,10 +521,10 @@
                               (sb-c::*source-paths* (source-paths frame)))
                           (ignore-errors (source-form object)))))
       (when source-form
-        (clim:with-bounding-rectangle* (x1 y1) record
+        (clim:with-bounding-rectangle* (x1 :y2 y2) record
           (let ((highlight-record (draw-source-form stream object source-form)))
             (setf (clim:output-record-position highlight-record)
-                  (values x1 (+ y1 60)))
+                  (values x1 (+ y2 20)))
             (ecase state
               (:highlight
                (clim:replay-output-record highlight-record stream))
