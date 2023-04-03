@@ -48,15 +48,7 @@
     (write-char #\Space stream)
     (print-ctype ctype stream)))
 
-;;; `component'
-
 ;;; TODO collapsed -> name
-
-(defmethod clouseau:make-object-state ((object sb-c::component) (place t))
-  ;; Do not show instance slots by default.
-  (let ((class (clouseau:object-state-class object place)))
-    (make-instance class :place      place
-                         :slot-style nil)))
 
 (defun draw-control-arc (stream from to x1 y1 x2 y2
                          &rest args &key &allow-other-keys)
@@ -90,16 +82,34 @@
     (apply #'draw-control-arc stream from to x1 y1 x2 y2
            (when ink (list :ink ink)))))
 
+;;;
+
+(defclass inspected-ir-instance (clouseau:inspected-instance)
+  ())
+
+;;; `component'
+
+;;; IR1
+
+(defclass inspected-component (inspected-ir-instance)
+  ())
+
+(defmethod clouseau:object-state-class ((object sb-c::component) (place t))
+  'inspected-component)
+
+(defmethod clouseau:make-object-state ((object sb-c::component) (place t))
+  ;; Do not show instance slots by default.
+  (let ((class (clouseau:object-state-class object place)))
+    (make-instance class :place      place
+                         :slot-style nil)))
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::component)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-component)
                                                 (style  (eql :expanded-body))
                                                 (stream clim:extended-output-stream))
   (let ((*lvar-numbers* (make-hash-table :test #'eq)))
     ;; IR1
     (clouseau:with-section (stream) "IR1 Control Flow Graph"
-      #+TODO (map nil (lambda (lambda)
-                        (princ lambda stream))
-                  (sb-c::component-lambdas object))
       (clim:format-graph-from-root
        (sb-c::component-head object)
        (lambda (node stream)
@@ -139,6 +149,9 @@
 (defun block-tail? (block)
   (eq block (sb-c::component-tail (sb-c::block-component block))))
 
+(defmethod clouseau:object-state-class ((object sb-c::cblock) (place t))
+  'inspected-ir-instance)
+
 (defmethod clouseau:make-object-state ((object sb-c::cblock) (place t))
   ;; When the block is inspected as the content of a slot, use
   ;; defaults. Otherwise pre-expand.
@@ -153,7 +166,7 @@
       (call-next-method)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cblock)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (cond ((block-head? object)
@@ -169,7 +182,7 @@
                  (sb-c::block-number object)))))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cblock)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-header))
                                                 (stream clim:extended-output-stream))
   (clouseau::inspect-class-as-name (class-of object) stream)
@@ -187,7 +200,7 @@
     (do-it start-node)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cblock)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-body))
                                                 (stream clim:extended-output-stream))
 
@@ -200,15 +213,21 @@
 
 ;;; `node'
 
+(defmethod clouseau:object-state-class ((object sb-c::node) (place t))
+  'inspected-ir-instance)
+
+(defmethod clouseau:object-state-class ((object sb-c::node) (place t))
+  'inspected-ir-instance)
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::node)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (clim:with-drawing-options (stream :text-family :fix :ink clim:+dark-blue+)
     (format stream "~(~A~)" (symbol-name (class-name (class-of object))))))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::bind)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (call-next-method)
@@ -216,7 +235,7 @@
     (format stream " ~A" (sb-c::functional-debug-name lambda))))
 
 (defmethod clouseau:inspect-object-using-state :after ((object sb-c::valued-node)
-                                                       (state  clouseau:inspected-instance)
+                                                       (state  inspected-ir-instance)
                                                        (style  (eql :collapsed))
                                                        (stream clim:extended-output-stream))
   ;; Result lvar.
@@ -227,7 +246,7 @@
   (print-type-annotation (sb-c::node-derived-type object) stream))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::ref)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (call-next-method)
@@ -252,7 +271,7 @@
            (princ (sb-c::ref-%source-name object) stream)))))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cset)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (call-next-method)
@@ -262,7 +281,7 @@
   (inspect-lvar object (sb-c::set-value object) stream))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cast)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (call-next-method)
@@ -275,7 +294,7 @@
     (write-char #\! stream)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::basic-combination)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   ;; Function lvar. Print the function name if possible.
@@ -293,7 +312,7 @@
        (sb-c::basic-combination-args object)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::combination)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   ;; Combination kind and possibly "tail" annotation.
@@ -314,7 +333,7 @@
   (call-next-method))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::mv-combination)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (clim:with-drawing-options (stream :text-size :tiny :ink clim:+dark-red+)
@@ -328,7 +347,7 @@
   (call-next-method))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::cif)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (call-next-method)
@@ -337,7 +356,7 @@
   (inspect-lvar object (sb-c::if-test object) stream))
 
 (defmethod clouseau:inspect-object-using-state :after ((object sb-c::creturn)
-                                                       (state  clouseau:inspected-instance)
+                                                       (state  inspected-ir-instance)
                                                        (style  (eql :collapsed))
                                                        (stream clim:extended-output-stream))
   ;; Result lvar
@@ -350,8 +369,11 @@
 ;;;
 ;;; We just make up a number and corresponding color.
 
+(defmethod clouseau:object-state-class ((object sb-c::lvar) (place t))
+  'inspected-ir-instance)
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::lvar)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (let ((number (lvar-number object)))
@@ -360,13 +382,19 @@
 
 ;;; `lambda-var'
 
+(defmethod clouseau:object-state-class ((object sb-c::lambda-var) (place t))
+  'inspected-ir-instance)
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::lambda-var)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (prin1 (sb-c::lambda-var-%source-name object) stream))
 
 ;;; `ir2block'
+
+(defmethod clouseau:object-state-class ((object sb-c::ir2-block) (place t))
+  'inspected-ir-instance)
 
 (defmethod clouseau:make-object-state ((object sb-c::ir2-block) (place t))
   ;; When the block is inspected as the content of a slot, use
@@ -379,7 +407,7 @@
       (call-next-method)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::ir2-block)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (format stream "#<~A ~A>"
@@ -387,14 +415,14 @@
           (sb-c::ir2-block-number object)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::ir2-block)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-header))
                                                 (stream clim:extended-output-stream))
   (clouseau::inspect-class-as-name (class-of object) stream)
   (format stream " ~A " (sb-c::ir2-block-number object)))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::ir2-block)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-body))
                                                 (stream clim:extended-output-stream))
   (clouseau:with-section (stream) "VOPs"
@@ -412,8 +440,11 @@
 
 ;;; `vop'
 
+(defmethod clouseau:object-state-class ((object sb-c::vop) (place t))
+  'inspected-ir-instance)
+
 (defmethod clouseau:inspect-object-using-state ((object sb-c::vop)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (let ((info (sb-c::vop-info object)))
@@ -428,14 +459,14 @@
               (collect (sb-c::vop-results object))))))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::vop)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-header))
                                                 (stream clim:extended-output-stream))
   (let ((info (sb-c::vop-info object)))
     (format stream "~A" (sb-c::vop-info-name info))))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::vop)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :expanded-body))
                                                 (stream clim:extended-output-stream))
   (call-next-method))
@@ -443,7 +474,7 @@
 ;;; `tn'
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::tn)
-                                                (state  clouseau:inspected-instance)
+                                                (state  inspected-ir-instance)
                                                 (style  (eql :collapsed))
                                                 (stream clim:extended-output-stream))
   (format stream "~D" (sb-c::tn-number object)))
