@@ -8,8 +8,7 @@
 
 ;;; Form
 
-(defclass form-editor (clime:always-repaint-background-mixin ; TDOO should not be needed
-                       clim:outlined-pane
+(defclass form-editor (clim:outlined-pane
                        clim:value-gadget)
   ()
   (:default-initargs
@@ -23,7 +22,7 @@
                  (handler-case
                      (prog1
                          (string->form new-value)
-                       (setf (clim:pane-background instance) clim:+background-ink+)
+                       (setf (clim:pane-background instance) clim:+black+)
                        (clim:repaint-sheet instance clim:+everywhere+))
                    (error (condition)
                      (princ condition *trace-output*) ; TODO show in user interface
