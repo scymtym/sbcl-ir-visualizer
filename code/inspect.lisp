@@ -48,7 +48,9 @@
     (write-char #\Space stream)
     (print-ctype ctype stream)))
 
-;;; TODO collapsed -> name
+(defgeneric inferred-type (object))
+
+;;; Control arc helpers
 
 (defun draw-control-arc (stream from to x1 y1 x2 y2
                          &rest args &key &allow-other-keys)
@@ -216,8 +218,8 @@
 (defmethod source-form ((object sb-c::node))
   (sb-c::node-source-form object))
 
-(defmethod clouseau:object-state-class ((object sb-c::node) (place t))
-  'inspected-ir-instance)
+(defmethod inferred-type ((object sb-c::valued-node))
+  (sb-c::node-derived-type object))
 
 (defmethod clouseau:object-state-class ((object sb-c::node) (place t))
   'inspected-ir-instance)
@@ -246,7 +248,7 @@
     (write-string " → " stream)
     (inspect-lvar object result stream))
   ;; Derived type.
-  (print-type-annotation (sb-c::node-derived-type object) stream))
+  (print-type-annotation (inferred-type object) stream))
 
 (defmethod clouseau:inspect-object-using-state ((object sb-c::ref)
                                                 (state  inspected-ir-instance)
@@ -358,6 +360,9 @@
   (write-char #\Space stream)
   (inspect-lvar object (sb-c::if-test object) stream))
 
+(defmethod inferred-type ((object sb-c::creturn))
+  (sb-c::return-result-type object))
+
 (defmethod clouseau:inspect-object-using-state :after ((object sb-c::creturn)
                                                        (state  inspected-ir-instance)
                                                        (style  (eql :collapsed))
@@ -366,7 +371,7 @@
   (write-char #\Space stream)
   (inspect-lvar object (sb-c::return-result object) stream)
   ;; Result type
-  (print-type-annotation (sb-c::return-result-type object) stream))
+  (print-type-annotation (inferred-type object) stream))
 
 ;;; `lvar'
 ;;;
